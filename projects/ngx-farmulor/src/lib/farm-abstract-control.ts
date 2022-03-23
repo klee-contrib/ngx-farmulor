@@ -150,13 +150,7 @@ export class FarmPrimitiveFormArray<E extends FieldEntry> extends FormArray {
   entity: E;
 
   constructor(entity: E, value: E[] | undefined) {
-    const formControlArray: FarmControl<E>[] = [];
-    if (value) {
-      forEach(value, item => {
-        formControlArray.push(new FarmControl(entity, item));
-      });
-    }
-    super(formControlArray);
+    super(value?.map(item=>new FarmControl(entity, item)) || []);
     this.entity = entity;
   }
 

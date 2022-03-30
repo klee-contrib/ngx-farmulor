@@ -4,10 +4,10 @@ import { NgForm } from "@angular/forms";
 import * as moment from "moment";
 /// Stores
 import { BehaviorSubject, finalize, first } from "rxjs";
-import { buildForm } from "./farm-abstract-control";
 import { clone } from "lodash";
-import { Farm, FarmConfig } from "./farmulor-form-models";
-import { Entity, EntityToType } from "./types";
+import { FarmConfig } from "../types/farmulor-form-models";
+import { Entity, EntityToType } from "../types";
+import { buildFarm } from "../farm/farm-builder";
 
 export const cleanEmpties = (object: any) => {
   Object.entries(object).forEach(([key, value]) => {
@@ -47,7 +47,7 @@ export class NgxFarmulorService {
     entity: E,
     config: FarmConfig<EntityToType<E>> = {}
   ): Farm<E> {
-    const formGroup = buildForm(entity as any);
+    const formGroup = buildFarm(entity as any);
     const store = new BehaviorSubject<EntityToType<E>>(
       config.defaultValue || ({} as any)
     );

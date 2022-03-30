@@ -10,9 +10,10 @@ import {
   Entity,
   ObjectEntry,
   ListEntry,
-} from "./types";
+} from "../types";
 import { isArray, forEach, dropRight, isNumber, isNil } from "lodash";
-import { EntityToType, FarmDomain, FieldEntry, PrimitiveListEntry, PrimitiveListFieldEntry, RecursiveListEntry } from "./types/entity";
+import { EntityToType, FarmDomain, FieldEntry, PrimitiveListFieldEntry, RecursiveListEntry } from "../types/entity";
+import { buildFarm } from "./farm-builder";
 
 /**
  * @description Surcharge des FormGroup Angular, permettant de les typer et d'y ajouter des propriétés customs
@@ -54,7 +55,7 @@ export class FarmArray<E extends Entity> extends FormArray {
     const abstractControlArray: AbstractControl[] = [];
     if (value) {
       forEach(value, item => {
-        abstractControlArray.push(buildForm(e, item));
+        abstractControlArray.push(buildFarm(e, item));
       });
     }
     super(abstractControlArray);
@@ -72,7 +73,7 @@ export class FarmArray<E extends Entity> extends FormArray {
       emitEvent?: boolean;
     }
   ) {
-    const result = buildForm(this.entity, value);
+    const result = buildFarm(this.entity, value);
     result.setParent(this);
     if (!isNil(index) && isNumber(index)) {
       this.insert(index, result);
@@ -109,7 +110,7 @@ export class FarmArray<E extends Entity> extends FormArray {
     }
     forEach(values, (value, index) => {
       if (!this.controls[index]) {
-        const newControl = buildForm(this.entity, value);
+        const newControl = buildFarm(this.entity, value);
         newControl.setParent(this);
         this.controls[index] = newControl;
       }
@@ -131,7 +132,7 @@ export class FarmArray<E extends Entity> extends FormArray {
     }
     forEach(values, (value, index) => {
       if (!this.controls[index]) {
-        const newControl = buildForm(this.entity, value);
+        const newControl = buildFarm(this.entity, value);
         newControl.setParent(this);
         this.controls[index] = newControl;
       }
@@ -150,7 +151,7 @@ export class FarmPrimitiveFormArray<E extends FieldEntry> extends FormArray {
   entity: E;
 
   constructor(entity: E, value: E[] | undefined) {
-    super(value?.map(item=>new FarmControl(entity, item)) || []);
+    super(value?.map(item => new FarmControl(entity, item)) || []);
     this.entity = entity;
   }
 
@@ -246,105 +247,3 @@ export type FarmGroup<E extends Entity> = FormGroup &
     ? FarmArray<E>
     : never;
   };
-
-/**
- * Construit un noeud à partir d'une entité, potentiellement de façon récursive.
- * @param entity L'entité de base (dans une liste pour un noeud liste).
- */
-export function buildForm<E extends Entity>(
-  entity: E,
-  value?: any
-): FarmGroup<E>;
-export function buildForm<E extends Entity>(
-  entity: E[],
-  value?: any
-): FarmArray<E>;
-export function buildForm<E extends Entity>(
-  entity: E | E[],
-  value?: any
-): FarmGroup<E> | FarmArray<E> {
-  // Cas d'un noeud de type liste : on construit une liste observable à laquelle on greffe les métadonnées et la fonction `set`.
-  if (isArray(entity)) {
-    const outputEntry = new FarmArray(entity[0], value);
-    return outputEntry;
-  }
-  // Cas d'un noeud simple : On parcourt tous les champs de l'entité.
-
-  const formMap: any = {};
-  forEach(
-    entity,
-    (
-      field:
-        | FieldEntry
-        | ObjectEntry
-        | ListEntry
-        | RecursiveListEntry
-        | PrimitiveListEntry,
-      key: keyof E
-    ) => {
-      let abstractControl;
-      switch (field.type) {
-        case "list":
-          abstractControl = buildForm(
-            [field.entity],
-            value && value[key]
-          );
-          break;
-        case "recursive-list":
-          abstractControl = new FarmArray(
-            entity,
-            value && value[key]
-          );
-          break;
-        case "object":
-          abstractControl = buildForm(
-            field.entity,
-            value && value[key]
-          );
-          break;
-        case "primitive-list":
-          abstractControl = new FarmPrimitiveFormArray(
-            field as PrimitiveListFieldEntry,
-            value && value[key]
-          );
-          break;
-        default:
-          abstractControl = new FarmControl(
-            field,
-            value && value[key]
-          );
-      }
-      formMap[key] = abstractControl;
-    }
-  );
-  // Ajout des propriétés de l'entité, pour y accéder directement dans les services sans utiliser le get()
-  const formGroup = new FormGroup(formMap) as FarmGroup<typeof entity>;
-  for (const key in entity) {
-    formGroup[key] = formGroup.get(key)! as any;
-  }
-  return formGroup;
-}
-
-/**
- * Deplace un AbstractControl dans un FarmArray
- * @param formArray Le FarmArray où l'on veut déplacer l'item
- * @param fromIndex L'index de départ de l'item
- * @param targetIndex L'index où l'item doit être déplacé
- */
-export function moveItemInFarmArray(
-  formArray: FarmArray<any>,
-  fromIndex: number,
-  targetIndex: number
-): void {
-  const direction = targetIndex > fromIndex ? 1 : -1;
-
-  const from = fromIndex;
-  const target = targetIndex;
-
-  const tempAbstractControl = formArray.at(from);
-  for (let i = from; i * direction < target * direction; i = i + direction) {
-    const current = formArray.at(i + direction);
-    formArray.setControl(i, current);
-  }
-  formArray.setControl(target, tempAbstractControl);
-}

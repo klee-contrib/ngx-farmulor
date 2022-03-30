@@ -4,10 +4,9 @@ import { NgForm } from "@angular/forms";
 import * as moment from "moment";
 /// Stores
 import { BehaviorSubject, finalize, first } from "rxjs";
-import { buildForm } from "./farm-abstract-control";
 import { clone } from "lodash";
-import { Farm, FarmConfig } from "./farmulor-form-models";
-import { Entity, EntityToType } from "./types";
+import { Entity, EntityToType, Farmulor, FarmConfig } from "../types";
+import { buildFarm } from "../farm/farm-builder";
 
 export const cleanEmpties = (object: any) => {
   Object.entries(object).forEach(([key, value]) => {
@@ -46,8 +45,8 @@ export class NgxFarmulorService {
   public build<E extends Entity>(
     entity: E,
     config: FarmConfig<EntityToType<E>> = {}
-  ): Farm<E> {
-    const formGroup = buildForm(entity as any);
+  ): Farmulor<E> {
+    const formGroup = buildFarm(entity as any);
     const store = new BehaviorSubject<EntityToType<E>>(
       config.defaultValue || ({} as any)
     );
@@ -84,11 +83,9 @@ export class NgxFarmulorService {
       save: function (): void {
         oSubmitted.next(true);
         if (this.isLoading) {
-          // self.snackService.error(
-          //     "En cours de sauvegarde, veuillez patienter"
-          // );
+          console.info('En cours de sauvegarde, veuillez patienter');
         } else if (!this.formGroup.valid) {
-          // self.snackService.error("Veuillez vérifier votre saisie");
+          console.error('Veuillez vérifier votre saisie');
         } else {
           this.isLoading = true;
           this.isSaving = true;
@@ -105,7 +102,7 @@ export class NgxFarmulorService {
                   message = this.getMessageSuccess(data);
                 }
                 if (!hideMessageSuccess) {
-                  // self.snackService.success(message);
+                  console.info(message);
                 }
 
                 if (typeof data == typeof clonedForm) {
